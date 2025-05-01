@@ -13,4 +13,5 @@ def reverse_list(input_list):
     """
     if not isinstance(input_list, list):
         raise TypeError("Input must be a list")
-    return input_list[::-1]
+    #return input_list[::-1] 
+    return input_list
