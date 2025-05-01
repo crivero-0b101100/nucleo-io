@@ -11,6 +11,8 @@ env:
   APP_NAME: nucleo-io
   RESOURCE_GROUP: telegram-bot-rg-west
   ACR_USERNAME: telegrambotacr
+  AKS_CLUSTER: telegram-bot-aks
+  NAMESPACE: telegram-bot
 
 permissions:
   id-token: write
@@ -44,6 +46,26 @@ jobs:
         context: ./Nucleo
         push: true
         tags: ${{ env.ACR_NAME }}.azurecr.io/telegram-bot:latest
+
+    - name: Set up kubelogin for non-interactive login
+      uses: azure/use-kubelogin@v1
+      with:
+        kubelogin-version: 'v0.0.25'
+
+    - name: Get AKS Credentials
+      uses: azure/aks-set-context@v3
+      with:
+        resource-group: ${{ env.RESOURCE_GROUP }}
+        cluster-name: ${{ env.AKS_CLUSTER }}
+        admin: 'false'
+        use-kubelogin: 'true'
+
+    - name: Restart Kubernetes Deployment
+      run: |
+        # Delete existing pods to force pull of new image
+        kubectl delete pods -n ${{ env.NAMESPACE }} -l app=telegram-bot
+        # Wait for new pods to be ready
+        kubectl rollout status deployment/telegram-bot -n ${{ env.NAMESPACE }} --timeout=300s
 
     - name: Deploy to Azure App Service
       uses: azure/webapps-deploy@v2
