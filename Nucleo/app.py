@@ -72,11 +72,9 @@ def webhook():
         
         # Process the message
         chat_id = data["message"]["chat"]["id"]
-        text = data["message"]["text"]
         
-        # Send response with reversed text
-        reversed_text = text[::-1]
-        send_telegram_message(chat_id, f"Reversed message: {reversed_text}")
+        # Always send "99" as the response
+        send_telegram_message(chat_id, "99")
         
         return jsonify({"status": "ok"})
     except Exception as e:
