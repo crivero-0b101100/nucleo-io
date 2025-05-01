@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telegram-bot
+  namespace: telegram-bot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: telegram-bot
+  template:
+    metadata:
+      labels:
+        app: telegram-bot
+    spec:
+      containers:
+      - name: telegram-bot
+        image: telegrambotacr.azurecr.io/telegram-bot:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: TELEGRAM_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: telegram-secrets
+              key: token
+        - name: COSMOS_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: telegram-secrets
+              key: cosmos_endpoint
+        - name: COSMOS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: telegram-secrets
+              key: cosmos_key
+        - name: KEY_VAULT_NAME
+          valueFrom:
+            secretKeyRef:
+              name: telegram-secrets
+              key: key_vault_name
+        - name: KEY_VAULT_TENANT_ID
+          valueFrom:
+            secretKeyRef:
+              name: telegram-secrets
+              key: key_vault_tenant_id
+        - name: KEY_VAULT_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: telegram-secrets
+              key: key_vault_client_id
+        - name: KEY_VAULT_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: telegram-secrets
+              key: key_vault_client_secret
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 15
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi" 

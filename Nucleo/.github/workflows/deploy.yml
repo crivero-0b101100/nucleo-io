@@ -1,0 +1,57 @@
+name: Deploy to Kubernetes
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: telegrambotacr.azurecr.io
+  IMAGE_NAME: telegram-bot
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to the Container registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push container image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          cluster-name: ${{ secrets.AKS_CLUSTER_NAME }}
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Update the deployment with the new image
+          kubectl set image deployment/telegram-bot telegram-bot=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -n telegram-bot
+          
+          # Wait for rollout to complete
+          kubectl rollout status deployment/telegram-bot -n telegram-bot 
