@@ -10,6 +10,7 @@ env:
   ACR_NAME: telegrambotacr
   APP_NAME: nucleo-io
   RESOURCE_GROUP: telegram-bot-rg-west
+  ACR_USERNAME: telegrambotacr
 
 permissions:
   id-token: write
@@ -34,7 +35,7 @@ jobs:
       uses: azure/docker-login@v1
       with:
         login-server: ${{ env.ACR_NAME }}.azurecr.io
-        username: ${{ secrets.ACR_USERNAME }}
+        username: ${{ env.ACR_USERNAME }}
         password: ${{ secrets.ACR_PASSWORD }}
 
     - name: Build and push container image
