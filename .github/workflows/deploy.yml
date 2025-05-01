@@ -11,6 +11,10 @@ env:
   APP_NAME: nucleo-io
   RESOURCE_GROUP: telegram-bot-rg-west
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
