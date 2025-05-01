@@ -19,23 +19,38 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 # Initialize Azure clients
-cosmos_client = CosmosClient(
-    url=os.getenv("COSMOS_ENDPOINT"),
-    credential=os.getenv("COSMOS_KEY")
-)
+try:
+    cosmos_endpoint = os.getenv("COSMOSDB_ENDPOINT")
+    cosmos_key = os.getenv("COSMOSDB_KEY")
+    
+    if not cosmos_endpoint or not cosmos_key:
+        logger.warning("Cosmos DB credentials not found in environment variables")
+        cosmos_client = None
+    else:
+        cosmos_client = CosmosClient(
+            url=cosmos_endpoint,
+            credential=cosmos_key
+        )
+        logger.info("Cosmos DB client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize Cosmos DB client: {str(e)}")
+    cosmos_client = None
 
 # Health check thread
 def health_check_thread():
     while True:
         try:
-            # Check Cosmos DB connection
-            database = cosmos_client.get_database_client("telegram")
-            container = database.get_container_client("messages")
-            container.query_items(
-                query="SELECT * FROM c LIMIT 1",
-                enable_cross_partition_query=True
-            )
-            logger.info("Health check: Server is healthy")
+            if cosmos_client:
+                # Check Cosmos DB connection
+                database = cosmos_client.get_database_client("telegram")
+                container = database.get_container_client("messages")
+                container.query_items(
+                    query="SELECT * FROM c LIMIT 1",
+                    enable_cross_partition_query=True
+                )
+                logger.info("Health check: Server is healthy")
+            else:
+                logger.warning("Health check: Cosmos DB client not initialized")
         except Exception as e:
             logger.error(f"Health check failed: {str(e)}")
         time.sleep(60)  # Check every minute
@@ -46,7 +61,9 @@ health_thread.start()
 
 @app.route("/health")
 def health():
-    return jsonify({"status": "healthy"})
+    if cosmos_client:
+        return jsonify({"status": "healthy"})
+    return jsonify({"status": "degraded", "message": "Cosmos DB not connected"})
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -57,8 +74,9 @@ def webhook():
         chat_id = data["message"]["chat"]["id"]
         text = data["message"]["text"]
         
-        # Send response
-        send_telegram_message(chat_id, f"You said: {text}")
+        # Send response with reversed text
+        reversed_text = text[::-1]
+        send_telegram_message(chat_id, f"Reversed message: {reversed_text}")
         
         return jsonify({"status": "ok"})
     except Exception as e:
@@ -67,7 +85,11 @@ def webhook():
 
 def send_telegram_message(chat_id, text):
     try:
-        url = f"https://api.telegram.org/bot{os.getenv('TELEGRAM_BOT_TOKEN')}/sendMessage"
+        token = os.getenv('TELEGRAM_TOKEN')
+        if not token:
+            raise ValueError("TELEGRAM_TOKEN not found in environment variables")
+            
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
         response = requests.post(url, json={
             "chat_id": chat_id,
             "text": text
