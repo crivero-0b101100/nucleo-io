@@ -7,6 +7,7 @@ from azure.cosmos import CosmosClient
 from azure.keyvault.secrets import SecretClient
 from azure.identity import DefaultAzureCredential
 import requests
+from list_utils import reverse_list
 
 # Configure logging
 logging.basicConfig(
@@ -72,9 +73,15 @@ def webhook():
         
         # Process the message
         chat_id = data["message"]["chat"]["id"]
+        text = data["message"]["text"]
         
-        # Always send "99" as the response
-        send_telegram_message(chat_id, "99")
+        # Convert text to list of characters and reverse it
+        char_list = list(text)
+        reversed_chars = reverse_list(char_list)
+        
+        # Format the response
+        response_text = f"Reversed characters: {reversed_chars}"
+        send_telegram_message(chat_id, response_text)
         
         return jsonify({"status": "ok"})
     except Exception as e:
